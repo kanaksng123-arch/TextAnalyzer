@@ -1,0 +1,339 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Text Analyzer</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: 'Segoe UI', sans-serif;
+            background: #0f172a;
+            color: #e2e8f0;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 40px 20px;
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 8px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        .subtitle {
+            color: #94a3b8;
+            margin-bottom: 40px;
+            font-size: 1rem;
+        }
+
+        .card {
+            background: #1e293b;
+            border: 1px solid #334155;
+            border-radius: 16px;
+            padding: 32px;
+            width: 100%;
+            max-width: 720px;
+        }
+
+        textarea {
+            width: 100%;
+            height: 180px;
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 16px;
+            color: #e2e8f0;
+            font-size: 1rem;
+            resize: vertical;
+            outline: none;
+            transition: border-color 0.2s;
+            font-family: inherit;
+        }
+
+        textarea:focus { border-color: #3b82f6; }
+
+        textarea::placeholder { color: #475569; }
+
+        .char-count {
+            text-align: right;
+            font-size: 0.75rem;
+            color: #475569;
+            margin-top: 6px;
+            margin-bottom: 16px;
+        }
+
+        button {
+            width: 100%;
+            padding: 14px;
+            background: linear-gradient(135deg, #3b82f6, #8b5cf6);
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 1rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        button:hover { opacity: 0.9; }
+        button:active { transform: scale(0.98); }
+        button:disabled { opacity: 0.5; cursor: not-allowed; }
+
+        .results {
+            margin-top: 32px;
+            display: none;
+        }
+
+        .sentiment-badge {
+            display: inline-block;
+            padding: 8px 24px;
+            border-radius: 999px;
+            font-size: 1.1rem;
+            font-weight: 700;
+            letter-spacing: 0.05em;
+            margin-bottom: 24px;
+        }
+
+        .POSITIVE { background: rgba(34,197,94,0.15); color: #22c55e; border: 1px solid #22c55e; }
+        .NEGATIVE { background: rgba(239,68,68,0.15); color: #ef4444; border: 1px solid #ef4444; }
+        .NEUTRAL  { background: rgba(148,163,184,0.15); color: #94a3b8; border: 1px solid #94a3b8; }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .stat-box {
+            background: #0f172a;
+            border: 1px solid #334155;
+            border-radius: 10px;
+            padding: 16px;
+            text-align: center;
+        }
+
+        .stat-num {
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #3b82f6;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #94a3b8;
+            margin-top: 4px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+        }
+
+        .score-bar-container {
+            margin-bottom: 12px;
+        }
+
+        .score-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 6px;
+        }
+
+        .score-bar {
+            height: 8px;
+            background: #1e293b;
+            border-radius: 999px;
+            overflow: hidden;
+            border: 1px solid #334155;
+        }
+
+        .score-fill {
+            height: 100%;
+            border-radius: 999px;
+            transition: width 0.6s ease;
+        }
+
+        .score-fill.positive { background: #22c55e; }
+        .score-fill.negative { background: #ef4444; }
+
+        .message {
+            text-align: center;
+            color: #94a3b8;
+            font-size: 0.95rem;
+            margin-top: 16px;
+            font-style: italic;
+        }
+
+        .error {
+            color: #ef4444;
+            text-align: center;
+            margin-top: 16px;
+            font-size: 0.9rem;
+            display: none;
+        }
+
+        .loading {
+            text-align: center;
+            color: #3b82f6;
+            margin-top: 16px;
+            display: none;
+        }
+    </style>
+</head>
+<body>
+
+<h1>Text Analyzer</h1>
+<p class="subtitle">Analyze the sentiment of any text instantly</p>
+
+<div class="card">
+    <textarea id="textInput"
+              placeholder="Type or paste your text here... (max 5000 characters)"
+              maxlength="5000"></textarea>
+
+    <div class="char-count">
+        <span id="charCount">0</span> / 5000
+    </div>
+
+    <button id="analyzeBtn" onclick="analyzeText()">
+        Analyze Text
+    </button>
+
+    <div class="loading" id="loading">Analyzing...</div>
+    <div class="error" id="error"></div>
+
+    <div class="results" id="results">
+
+        <div style="text-align:center;">
+            <span class="sentiment-badge" id="sentimentBadge"></span>
+        </div>
+
+        <div class="stats-grid">
+            <div class="stat-box">
+                <div class="stat-num" id="wordCount">0</div>
+                <div class="stat-label">Words</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" id="charCountResult">0</div>
+                <div class="stat-label">Characters</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-num" id="sentenceCount">0</div>
+                <div class="stat-label">Sentences</div>
+            </div>
+        </div>
+
+        <div class="score-bar-container">
+            <div class="score-label">
+                <span>Positive Score</span>
+                <span id="positiveScore">0%</span>
+            </div>
+            <div class="score-bar">
+                <div class="score-fill positive" id="positiveBar" style="width:0%"></div>
+            </div>
+        </div>
+
+        <div class="score-bar-container">
+            <div class="score-label">
+                <span>Negative Score</span>
+                <span id="negativeScore">0%</span>
+            </div>
+            <div class="score-bar">
+                <div class="score-fill negative" id="negativeBar" style="width:0%"></div>
+            </div>
+        </div>
+
+        <p class="message" id="message"></p>
+
+    </div>
+</div>
+
+<script>
+    const textInput = document.getElementById('textInput');
+    const charCount = document.getElementById('charCount');
+
+    textInput.addEventListener('input', () => {
+        charCount.textContent = textInput.value.length;
+    });
+
+    async function analyzeText() {
+        const text = textInput.value.trim();
+
+        if (!text) {
+            showError('Please enter some text to analyze.');
+            return;
+        }
+
+        const btn = document.getElementById('analyzeBtn');
+        const loading = document.getElementById('loading');
+        const error = document.getElementById('error');
+        const results = document.getElementById('results');
+
+        btn.disabled = true;
+        loading.style.display = 'block';
+        error.style.display = 'none';
+        results.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/analyze', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+
+            if (!response.ok) {
+                const err = await response.json();
+                throw new Error(err.text || 'Something went wrong');
+            }
+
+            const data = await response.json();
+            displayResults(data);
+
+        } catch (err) {
+            showError(err.message || 'Failed to analyze. Please try again.');
+        } finally {
+            btn.disabled = false;
+            loading.style.display = 'none';
+        }
+    }
+
+    function displayResults(data) {
+        const badge = document.getElementById('sentimentBadge');
+        badge.textContent = data.sentiment;
+        badge.className = 'sentiment-badge ' + data.sentiment;
+
+        document.getElementById('wordCount').textContent = data.wordCount;
+        document.getElementById('charCountResult').textContent = data.characterCount;
+        document.getElementById('sentenceCount').textContent = data.sentenceCount;
+
+        document.getElementById('positiveScore').textContent = data.positiveScore + '%';
+        document.getElementById('negativeScore').textContent = data.negativeScore + '%';
+
+        document.getElementById('positiveBar').style.width =
+            Math.min(data.positiveScore * 3, 100) + '%';
+        document.getElementById('negativeBar').style.width =
+            Math.min(data.negativeScore * 3, 100) + '%';
+
+        document.getElementById('message').textContent = data.message;
+        document.getElementById('results').style.display = 'block';
+    }
+
+    function showError(msg) {
+        const error = document.getElementById('error');
+        error.textContent = msg;
+        error.style.display = 'block';
+    }
+
+    textInput.addEventListener('keydown', (e) => {
+        if (e.ctrlKey && e.key === 'Enter') analyzeText();
+    });
+</script>
+
+</body>
+</html>
