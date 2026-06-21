@@ -1,9 +1,11 @@
 package kanak.project.textAnalyzer.controller;
 
 import jakarta.validation.Valid;
+import kanak.project.textAnalyzer.dto.AIAnalysisResult;
 import kanak.project.textAnalyzer.dto.TextAnalysisResponse;
 import kanak.project.textAnalyzer.dto.TextRequest;
 import kanak.project.textAnalyzer.entity.TextAnalysis;
+import kanak.project.textAnalyzer.service.GeminiService;
 import kanak.project.textAnalyzer.service.TextAnalyzerService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -19,6 +21,9 @@ public class TextAnalyzerController {
 
     @Autowired
     private TextAnalyzerService textAnalyzerService;
+
+    @Autowired
+    private GeminiService geminiService;
 
     @PostMapping
     public ResponseEntity<TextAnalysisResponse> analyzeText(
@@ -43,5 +48,13 @@ public class TextAnalyzerController {
     @GetMapping("/health")
     public ResponseEntity<String> health() {
         return new ResponseEntity<>("Text Analyzer is running!", HttpStatus.OK);
+    }
+
+
+
+    @PostMapping("/ai")
+    public ResponseEntity<AIAnalysisResult> aiAnalyze(@Valid @RequestBody TextRequest request) {
+        AIAnalysisResult result = geminiService.analyze(request.getText());
+        return new ResponseEntity<>(result, HttpStatus.OK);
     }
 }

@@ -185,6 +185,40 @@
             margin-top: 16px;
             display: none;
         }
+
+        .ai-btn {
+            background: transparent;
+            border: 1px solid #8b5cf6;
+            color: #8b5cf6;
+            margin-top: 12px;
+        }
+        .ai-btn:hover { background: rgba(139,92,246,0.1); opacity: 1; }
+
+        .ai-results {
+            margin-top: 24px;
+            padding-top: 24px;
+            border-top: 1px solid #334155;
+            display: none;
+        }
+        .ai-label {
+            font-size: 0.75rem;
+            color: #8b5cf6;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            margin-bottom: 12px;
+            font-weight: 700;
+        }
+        .ai-summary { color: #e2e8f0; font-size: 0.95rem; line-height: 1.5; margin-bottom: 16px; }
+        .ai-reason { color: #94a3b8; font-size: 0.85rem; margin-bottom: 16px; font-style: italic; }
+        .theme-tags { display: flex; flex-wrap: wrap; gap: 8px; }
+        .theme-tag {
+            background: rgba(139,92,246,0.15);
+            border: 1px solid #8b5cf6;
+            color: #c4b5fd;
+            padding: 4px 12px;
+            border-radius: 999px;
+            font-size: 0.8rem;
+        }
     </style>
 </head>
 <body>
@@ -205,7 +239,12 @@
         Analyze Text
     </button>
 
+    <button id="aiBtn" class="ai-btn" onclick="getAIInsights()">
+        ✨ Get AI Insights
+    </button>
+
     <div class="loading" id="loading">Analyzing...</div>
+    <div class="loading" id="aiLoading">Asking Gemini...</div>
     <div class="error" id="error"></div>
 
     <div class="results" id="results">
@@ -251,6 +290,13 @@
 
         <p class="message" id="message"></p>
 
+    </div>
+
+    <div class="ai-results" id="aiResults">
+        <div class="ai-label">AI Insights</div>
+        <p class="ai-summary" id="aiSummary"></p>
+        <p class="ai-reason" id="aiReason"></p>
+        <div class="theme-tags" id="aiThemes"></div>
     </div>
 </div>
 
@@ -328,6 +374,56 @@
         const error = document.getElementById('error');
         error.textContent = msg;
         error.style.display = 'block';
+    }
+
+    async function getAIInsights() {
+        const text = textInput.value.trim();
+        if (!text) { showError('Please enter some text to analyze.'); return; }
+
+        const btn = document.getElementById('aiBtn');
+        const loading = document.getElementById('aiLoading');
+        const aiResults = document.getElementById('aiResults');
+        const error = document.getElementById('error');
+
+        btn.disabled = true;
+        loading.style.display = 'block';
+        error.style.display = 'none';
+        aiResults.style.display = 'none';
+
+        try {
+            const response = await fetch('/api/analyze/ai', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text })
+            });
+
+            if (!response.ok) throw new Error('AI analysis failed. Please try again.');
+
+            const data = await response.json();
+            displayAIResults(data);
+        } catch (err) {
+            showError(err.message || 'Failed to get AI insights.');
+        } finally {
+            btn.disabled = false;
+            loading.style.display = 'none';
+        }
+    }
+
+    function displayAIResults(data) {
+        document.getElementById('aiSummary').textContent = data.summary;
+        document.getElementById('aiReason').textContent =
+            `Sentiment: ${data.sentiment} — ${data.sentimentReason}`;
+
+        const themesContainer = document.getElementById('aiThemes');
+        themesContainer.innerHTML = '';
+        (data.keyThemes || []).forEach(theme => {
+            const tag = document.createElement('span');
+            tag.className = 'theme-tag';
+            tag.textContent = theme;
+            themesContainer.appendChild(tag);
+        });
+
+        document.getElementById('aiResults').style.display = 'block';
     }
 
     textInput.addEventListener('keydown', (e) => {
